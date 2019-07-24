@@ -204,7 +204,7 @@ pipeline {
             steps {
                 checkout([$class: 'GitSCM',
                     userRemoteConfigs: [[url: env.GITHUB_URL]],
-                    branches: [[name: env.BRANCH_NAME ?: 'deploy-by-ssh']],
+                    branches: [[name: env.BRANCH_NAME ?: 'master']],
                     browser: [$class: 'GithubWeb', repoUrl: env.GITHUB_URL],
                     extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'src/appinhouse']]
                 ])
@@ -241,12 +241,6 @@ pipeline {
         stage('Archive') {
             steps {
                 archiveArtifacts artifacts: '*.tar.gz', onlyIfSuccessful: true
-            }
-        }
-        stage('Test') {
-            steps {
-                println(env.SERVER_TARBALL)
-                println(env.WEB_TARBALL)
             }
         }
         stage("Init work dir!") {

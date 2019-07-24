@@ -1,0 +1,14 @@
+[Unit]
+Description=seasun pirates project, appinhouseserver
+After=redis.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/nobody/appinhouseserver/current
+ExecStart=/opt/nobody/appinhouseserver/current/appinhouse
+Restart=on-abnormal
+User=nobody
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

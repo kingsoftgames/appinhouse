@@ -16,11 +16,11 @@ def getHost() {
 
 remote = getHost()
 
-def deployAppinhouseServer(String secretKey) {
+def deployAppinhouseServer(String secretKey, String domain) {
     sshPut remote: remote, from: env.SERVER_TARBALL, into: '/tmp'
     sshPut remote: remote, from: env.WORKSPACE + '/src/appinhouse/deploy/appinhouse.service', into: '/tmp'
     sshPut remote: remote, from: env.WORKSPACE + '/src/appinhouse/deploy/server.sh', into: '/tmp'
-    sshCommand remote: remote, command: "bash /tmp/server.sh "+ env.SERVER_TARBALL + " " + secretKey
+    sshCommand remote: remote, command: "bash /tmp/server.sh "+ env.SERVER_TARBALL + " " + secretKey + " " + domain 
     sshRemove remote: remote, path: '/tmp/' + env.SERVER_TARBALL
 }
 
@@ -125,7 +125,7 @@ pipeline {
                         remote.identityFile = identity
                         def appinhouseConf = loadAppinhouseConf()
                         withCredentials([string(credentialsId: appinhouseConf.credential, variable: 'secretKey')]) {
-                            deployAppinhouseServer(secretKey)
+                            deployAppinhouseServer(secretKey, appinhouseConf.domain)
                         }
                     }
                 }

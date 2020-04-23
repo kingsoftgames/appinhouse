@@ -47,7 +47,7 @@ public class AppsResource {
 
 
     @Route(methods = HttpMethod.GET, path = "v2/apps", type = HandlerType.NORMAL)
-    void hello(RoutingContext rc) {
+    void getApps(RoutingContext rc) {
         ResponseData<AppsResponse> responseData = ResponseDataUtil.buildSuccess();
         var request = appsRequest(rc);
         validate(request, responseData);

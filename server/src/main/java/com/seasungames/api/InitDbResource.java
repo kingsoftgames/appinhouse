@@ -19,7 +19,7 @@ public class InitDbResource {
     AppStore appStore;
 
     @Route(methods = HttpMethod.POST, path = "v2/initDb",  type = HandlerType.NORMAL)
-    void hello(RoutingContext rc) {
+    void initDb(RoutingContext rc) {
         ResponseData<Void> responseData = ResponseDataUtil.buildSuccess();
         Future<Void> createApp = Future.future(f -> appStore.createTable(f));
         createApp.setHandler(ar->{

@@ -13,7 +13,7 @@ import javax.inject.Inject;
 /**
  * Created by jianghaitao on 2020/4/22.
  */
-public class Filters {
+public class SecretKeyFilter {
 
     @Inject
     ApiConfig apiConfig;
@@ -27,7 +27,7 @@ public class Filters {
 
     // 100 是filter的执行顺序
     @RouteFilter(100)
-    void myFilter(RoutingContext rc) {
+    void filter(RoutingContext rc) {
         var request = rc.request();
         var pass = true;
         if (nonGetMethod(request)) {

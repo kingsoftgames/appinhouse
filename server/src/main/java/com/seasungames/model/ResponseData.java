@@ -22,6 +22,7 @@ public class ResponseData<T> {
     private int code;
 
     private String msg;
+
     @JsonInclude(Include.NON_NULL)
     private T data;
 
@@ -52,11 +53,9 @@ public class ResponseData<T> {
         this.msg = errorCode.getMsg();
     }
 
-    public void setParamErrorMessage(Set<ConstraintViolation<AppsRequest>> violations) {
+    public void setParamErrorMessage(String errorMessage) {
         this.code = ErrorCode.PARAM_ERROR.getCode();
-        this.msg = violations.stream()
-                .map(ConstraintViolation::getMessage)
-                .collect(Collectors.joining(", "));
+        this.msg = errorMessage;
     }
 
     public boolean error() {

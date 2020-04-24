@@ -13,4 +13,10 @@ public interface ApiConfig {
 
     @ConfigProperty(name = "secret-key", defaultValue = "test")
     String secretKey();
+
+    @ConfigProperty(name = "request.content-type", defaultValue = "application/json")
+    String requestContentType();
+
+    @ConfigProperty(name = "response.content-type", defaultValue = "application/json")
+    String responseContentType();
 }

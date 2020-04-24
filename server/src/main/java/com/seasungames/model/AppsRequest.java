@@ -14,7 +14,9 @@ import javax.validation.constraints.Min;
 @Setter
 @Builder
 @RegisterForReflection
-public class AppsRequest {
-    @Min(message="page min value is 1", value=1)
-    int page;
+public class AppsRequest extends Request {
+    long lastCtime;
+
+    @Min(message = "limit error or limit min value is 1", value = 1)
+    int limit;
 }

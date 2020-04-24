@@ -3,7 +3,6 @@ package com.seasungames.filter;
 import com.seasungames.config.ApiConfig;
 import io.netty.util.internal.StringUtil;
 import io.quarkus.vertx.web.RouteFilter;
-import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.ext.web.RoutingContext;
 
@@ -13,7 +12,11 @@ import javax.inject.Inject;
 /**
  * Created by jianghaitao on 2020/4/22.
  */
-public class SecretKeyFilter {
+public class SecretKeyFilter implements Filter {
+
+    private static int code = 401;
+    private static String message = "Missing or invalid X-SecretKey HTTP header";
+    private static final String validName = "X-SecretKey";
 
     @Inject
     ApiConfig apiConfig;
@@ -25,33 +28,15 @@ public class SecretKeyFilter {
         secretKey = apiConfig.secretKey();
     }
 
-    // 100 是filter的执行顺序
-    @RouteFilter(100)
+    // 100 是filter的执行顺序 ,越大越先执行
+    @RouteFilter(198)
     void filter(RoutingContext rc) {
-        var request = rc.request();
-        var pass = true;
-        if (nonGetMethod(request)) {
-            if (isInvalidSecretKey(request, secretKey)) {
-                pass = false;
-            }
-        }
-        next(rc, pass);
+        handle(rc, code, message);
     }
 
-    private static void next(RoutingContext rc, boolean pass) {
-        if (pass) {
-            rc.next();
-        } else {
-            rc.response().setStatusCode(400).end("Missing or invalid X-SecretKey HTTP header");
-        }
-    }
-
-    private static boolean isInvalidSecretKey(HttpServerRequest request, String secretKey) {
-        var key = request.headers().get("X-SecretKey");
-        return StringUtil.isNullOrEmpty(secretKey) || !key.equals(secretKey);
-    }
-
-    private static boolean nonGetMethod(HttpServerRequest request) {
-        return request.method() != HttpMethod.GET;
+    @Override
+    public boolean isInvalidRequest(HttpServerRequest request) {
+        var key = request.headers().get(validName);
+        return StringUtil.isNullOrEmpty(key) || !key.equals(secretKey);
     }
 }

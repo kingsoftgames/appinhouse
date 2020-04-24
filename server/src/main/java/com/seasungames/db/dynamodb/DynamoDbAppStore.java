@@ -31,7 +31,9 @@ public class DynamoDbAppStore implements AppStore {
     private static final String ATTRIBUTE_DESCRIPTION = "description";
     private static final String ATTRIBUTE_CREATE_TIME = "ctime";
     private static final String ATTRIBUTE_ALIAS = "alias";
-    private static final String TTL = "ttl";
+    // 存储成同一个值，为了分页查询, key是gid,值也是gid
+    private static final String GSI_HASH_KEY = "gid";
+    private static final String GSI_CREATE_TIME_INDEX_NAME = "GsiCtimeIndex";
 
     @Inject
     Vertx vertx;
@@ -84,11 +86,20 @@ public class DynamoDbAppStore implements AppStore {
     }
 
     @Override
-    public void load(Handler<AsyncResult<List<AppItem>>> resultHandler) {
+    public void getByLimit(long ctime, int limit, Handler<AsyncResult<List<AppItem>>> resultHandler) {
         Objects.requireNonNull(resultHandler, "resultHandler");
-        var request = ScanRequest.builder().tableName(tableName).build();
+        Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
+        var request = QueryRequest.builder().tableName(tableName)
+                .indexName(GSI_CREATE_TIME_INDEX_NAME)
+                .returnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+                .keyConditionExpression("#key = :key and #ctime < :ctime")
+                .expressionAttributeNames(Map.of("#ctime", ATTRIBUTE_CREATE_TIME, "#key", GSI_HASH_KEY))
+                .expressionAttributeValues(Map.of(":ctime", AttributeValue.builder().n(String.valueOf(ctime)).build(),
+                        ":key", AttributeValue.builder().s(GSI_HASH_KEY).build()))
+                .scanIndexForward(false)
+                .limit(limit).build();
 
-        client.scan(request).whenComplete((response, err) ->
+        client.query(request).whenComplete((response, err) ->
                 pcall(() -> {
                     if (response != null) {
                         resultHandler.handle(Future.succeededFuture(froms(response.items())));
@@ -225,18 +236,49 @@ public class DynamoDbAppStore implements AppStore {
                                 .attributeName(HASH_KEY_ID)
                                 .keyType(KeyType.HASH)
                                 .build())
-                .attributeDefinitions(
-                        AttributeDefinition.builder()
-                                .attributeName(HASH_KEY_ID)
-                                .attributeType(ScalarAttributeType.S)
-                                .build()
-                );
+                .attributeDefinitions(getAttributeDefinitions())
+                .globalSecondaryIndexes(getGlobalSecondaryIndexes());
         DynamoDbCreateTable.builder()
-                .client(client).config(config).ttlName(TTL).vertx(vertx)
+                .client(client).config(config).vertx(vertx)
                 .tableName(tableName)
                 .build()
-                .createTableWithTTL(builder, resultHandle);
+                .createTable(builder, resultHandle, false);
 
+    }
+
+
+    private Collection<AttributeDefinition> getAttributeDefinitions() {
+        return List.of(AttributeDefinition.builder()
+                        .attributeName(HASH_KEY_ID)
+                        .attributeType(ScalarAttributeType.S)
+                        .build(),
+                AttributeDefinition.builder()
+                        .attributeName(ATTRIBUTE_CREATE_TIME)
+                        .attributeType(ScalarAttributeType.N)
+                        .build(),
+                AttributeDefinition.builder()
+                        .attributeName(GSI_HASH_KEY)
+                        .attributeType(ScalarAttributeType.S)
+                        .build());
+
+    }
+
+    private List<GlobalSecondaryIndex> getGlobalSecondaryIndexes() {
+        return List.of(GlobalSecondaryIndex.builder()
+                .indexName(GSI_CREATE_TIME_INDEX_NAME)
+                .keySchema(
+                        KeySchemaElement.builder()
+                                .attributeName(GSI_HASH_KEY)
+                                .keyType(KeyType.HASH)
+                                .build(),
+                        KeySchemaElement.builder()
+                                .attributeName(ATTRIBUTE_CREATE_TIME)
+                                .keyType(KeyType.RANGE)
+                                .build())
+                .projection(Projection.builder()
+                        .projectionType(ProjectionType.ALL)
+                        .build())
+                .build());
     }
 
     private static List<AppItem> froms(List<Map<String, AttributeValue>> items) {
@@ -259,7 +301,6 @@ public class DynamoDbAppStore implements AppStore {
                 .app(item.get(HASH_KEY_ID).s())
                 .ctime(Integer.parseInt(item.get(ATTRIBUTE_CREATE_TIME).n()))
                 .description(item.get(ATTRIBUTE_DESCRIPTION).s())
-                .ttl(Integer.parseInt(item.get(TTL).n()))
                 .alias(item.get(ATTRIBUTE_ALIAS).s())
                 .build();
     }
@@ -268,9 +309,9 @@ public class DynamoDbAppStore implements AppStore {
         Map<String, AttributeValue> map = new HashMap<>();
         map.put(HASH_KEY_ID, AttributeValue.builder().s(appItem.app()).build());
         map.put(ATTRIBUTE_CREATE_TIME, AttributeValue.builder().n(Long.toString(appItem.ctime())).build());
-        map.put(TTL, AttributeValue.builder().n(Integer.toString(appItem.ttl())).build());
         map.put(ATTRIBUTE_DESCRIPTION, AttributeValue.builder().s(appItem.description()).build());
         map.put(ATTRIBUTE_ALIAS, AttributeValue.builder().s(appItem.alias()).build());
+        map.put(GSI_HASH_KEY, AttributeValue.builder().s(GSI_HASH_KEY).build());
         return map;
     }
 }

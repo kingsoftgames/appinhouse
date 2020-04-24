@@ -2,7 +2,6 @@ package com.seasungames.model;
 
 import com.seasungames.db.pojo.AppItem;
 import io.quarkus.runtime.annotations.RegisterForReflection;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -11,7 +10,6 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-@Builder
 @RegisterForReflection
 public class AppResponse {
     private String app;
@@ -20,11 +18,14 @@ public class AppResponse {
 
     private String alias;
 
+    private long ctime;
+
     public static AppResponse from(AppItem appItem) {
-        return AppResponse.builder()
-                .alias(appItem.alias())
-                .app(appItem.app())
-                .description(appItem.description())
-                .build();
+        AppResponse response = new AppResponse();
+        response.setCtime(appItem.ctime());
+        response.setAlias(appItem.alias());
+        response.setApp(appItem.app());
+        response.setDescription(appItem.description());
+        return response;
     }
 }

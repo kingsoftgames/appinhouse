@@ -16,7 +16,7 @@ public interface AppStore {
 
     void exist(String app, Handler<AsyncResult<Boolean>> resultHandler);
 
-    void load(Handler<AsyncResult<List<AppItem>>> resultHandler);
+    void getByLimit(long ctime, int limit, Handler<AsyncResult<List<AppItem>>> resultHandler);
 
     void get(String app, Handler<AsyncResult<AppItem>> resultHandler);
 

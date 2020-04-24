@@ -36,7 +36,7 @@ public class DynamoDbCreateTable {
     private String tableName;
     private boolean addTTL;
 
-    public void createTableWithTTL(CreateTableRequest.Builder builder, Handler<AsyncResult<Void>> resultHandler) {
+    public void createTable(CreateTableRequest.Builder builder, Handler<AsyncResult<Void>> resultHandler, boolean withTTL) {
         if (config.onDemandBilling()) {
             builder.billingMode(BillingMode.PAY_PER_REQUEST);
         } else {
@@ -58,7 +58,7 @@ public class DynamoDbCreateTable {
                 return Future.<Void>future(f -> waitForTableToBecomeAvailable(count, f));
             }
         }).compose(v -> {
-            if (addTTL) {
+            if (withTTL && addTTL) {
                 return Future.<Void>future(this::addTTL);
             } else {
                 return Future.succeededFuture();
@@ -70,6 +70,7 @@ public class DynamoDbCreateTable {
         client.createTable(request).whenComplete((response, err) ->
                 pcall(() -> {
                     if (err != null && !(err.getCause() instanceof ResourceInUseException)) {
+                        log.error("DynamoDB table created fail. tableName : {} .error :{}", tableName, err.getMessage());
                         resultHandler.handle(Future.failedFuture(err));
                     } else {
                         if (err != null && err.getCause() instanceof ResourceInUseException) {

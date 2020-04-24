@@ -5,7 +5,6 @@ import com.seasungames.db.AppStore;
 import com.seasungames.db.pojo.AppItem;
 import com.seasungames.model.*;
 import com.seasungames.util.HttpUtils;
-import io.netty.util.internal.StringUtil;
 import io.quarkus.vertx.web.Route;
 import io.quarkus.vertx.web.Route.HandlerType;
 import io.vertx.core.http.HttpMethod;
@@ -16,11 +15,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
-import javax.validation.ConstraintViolation;
 import javax.validation.Validator;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 /**
  * Created by jianghaitao on 2020/4/22.
@@ -41,7 +39,7 @@ public class AppsResource {
     private int pageSize;
 
     @PostConstruct
-    void init(){
+    void init() {
         pageSize = apiConfig.pageSize();
     }
 
@@ -50,14 +48,14 @@ public class AppsResource {
     void getApps(RoutingContext rc) {
         ResponseData<AppsResponse> responseData = ResponseDataUtil.buildSuccess();
         var request = appsRequest(rc);
-        validate(request, responseData);
-        if (responseData.error()) {
+        if (request.isInvalid(validator)) {
+            responseData.setParamErrorMessage(request.getParamErrorMessage());
             rc.response().end(Json.encode(responseData));
             return;
         }
-        appStore.load(ar -> {
+        appStore.getByLimit(request.getLastCtime(), request.getLimit(), ar -> {
             if (ar.succeeded()) {
-                toResponses(ar.result(), request.getPage(), responseData);
+                toResponses(ar.result(), request, responseData);
             } else {
                 responseData.setErrorCode(ErrorCode.DB_ERROR);
             }
@@ -65,36 +63,45 @@ public class AppsResource {
         });
     }
 
-    private void validate(AppsRequest request, ResponseData<AppsResponse> responseData) {
-        Set<ConstraintViolation<AppsRequest>> violations = validator.validate(request);
-        if (!violations.isEmpty()) {
-            responseData.setParamErrorMessage(violations);
-        }
-    }
 
     private AppsRequest appsRequest(RoutingContext rc) {
-        var page = rc.request().getParam("page");
-        if (StringUtil.isNullOrEmpty(page)) {
-            page = "1";
-        }
-        return AppsRequest.builder().page(Integer.parseInt(page)).build();
+        var request = rc.request();
+        var limit = HttpUtils.getIntWithDefault(request, "limit", pageSize);
+        var lastCtime = HttpUtils.getLongWithDefault(request, "ctime", Instant.now().getEpochSecond());
+        var builder = AppsRequest.builder();
+        return builder.limit(limit).lastCtime(lastCtime).build();
     }
 
-    private void toResponses(List<AppItem> list, int page, ResponseData<AppsResponse> responseData) {
-        if (list == null || list.isEmpty()) {
+    private void toResponses(List<AppItem> list, AppsRequest request, ResponseData<AppsResponse> responseData) {
+        if (list.isEmpty()) {
             return;
         }
-        var start = HttpUtils.getStart(page, pageSize);
-        var end = HttpUtils.getEnd(page, pageSize);
-        int size = list.size();
-        end = Math.min(end, size);
-        var totalPage = HttpUtils.getTotalPage(size, pageSize);
-        list.sort((a, b) -> Long.compare(b.ctime(), a.ctime()));
+
         List<AppResponse> ret = new ArrayList<>(list.size());
-        var sub = list.subList(start, end);
-        for (var app : sub) {
-            ret.add(AppResponse.from(app));
+        for (var item : list) {
+            ret.add(AppResponse.from(item));
         }
-        responseData.setData(AppsResponse.builder().items(ret).page(page).totalPage(totalPage).build());
+        responseData.setData(AppsResponse.builder().items(ret).build());
     }
+
+//    private static int indexOfCtime(List<AppItem> list, long ctime) {
+//        var ret = -1;
+//        var size = list.size();
+//        var maxCtime = list.get(0).ctime();
+//        var minCtime = list.get(size-1).ctime();
+//        if (ctime >= maxCtime){
+//            ret = 0;
+//            return ret;
+//        }
+//        if (ctime <= minCtime){
+//            return ret;
+//        }
+//        for (int i = 0; i < size; i++) {
+//            if (list.get(i).ctime() == ctime) {
+//                ret = i + 1;
+//                break;
+//            }
+//        }
+//        return ret;
+//    }
 }

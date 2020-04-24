@@ -7,10 +7,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.validation.ConstraintViolation;
-import java.util.Set;
-import java.util.stream.Collectors;
-
 /**
  * Created by jianghaitao on 2019/8/3.
  */

@@ -41,8 +41,10 @@ public final class HttpUtils {
     }
 
     public static <T> void validate(Validator validator, Request request, ResponseData<T> responseData) {
-        if (request.isInvalid(validator)) {
-            responseData.setParamErrorMessage(request.getParamErrorMessage());
+        if (Objects.nonNull(request)) {
+            if (request.isInvalid(validator)) {
+                responseData.setParamErrorMessage(request.getParamErrorMessage());
+            }
         } else {
             responseData.setErrorCode(ErrorCode.PARAM_ERROR);
         }

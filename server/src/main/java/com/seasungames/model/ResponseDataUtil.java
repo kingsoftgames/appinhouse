@@ -19,7 +19,7 @@ public class ResponseDataUtil {
         return new ResponseData<>(errorCode);
     }
 
-    public static <T> ResponseData<T> buildError(int code, String msg) {
-        return new ResponseData<>(code, msg);
+    public static <T> ResponseData<T> buildError(ErrorCode errorCode, String msg) {
+        return new ResponseData<>(errorCode.getCode(), msg);
     }
 }

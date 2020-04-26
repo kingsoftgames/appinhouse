@@ -12,7 +12,7 @@ import java.util.List;
 public interface AppStore {
     void createTable(Handler<AsyncResult<Void>> resultHandler);
 
-    void save(AppItem appItem, Handler<AsyncResult<Void>> resultHandler);
+    void save(AppItem appItem, Handler<AsyncResult<Boolean>> resultHandler);
 
     void exist(String app, Handler<AsyncResult<Boolean>> resultHandler);
 

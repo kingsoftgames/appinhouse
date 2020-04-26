@@ -4,6 +4,7 @@ import com.seasungames.model.ErrorCode;
 import com.seasungames.model.Request;
 import com.seasungames.model.ResponseData;
 import io.netty.util.internal.StringUtil;
+import io.quarkus.runtime.annotations.RegisterForReflection;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.json.DecodeException;
 import io.vertx.core.json.JsonObject;
@@ -11,15 +12,15 @@ import io.vertx.ext.web.RoutingContext;
 
 import javax.validation.Validator;
 import java.util.Objects;
-import java.util.Optional;
 
 
 /**
  * Created by wangzhiguang on 2019-04-03.
  */
+@RegisterForReflection
 public final class HttpUtils {
 
-    public static <T> Optional<T> parseRequest(RoutingContext rc, Class<T> clazz) {
+    public static <T> T parseRequest(RoutingContext rc, Class<T> clazz) {
         var body = getBody(rc);
         T ret = null;
         if (Objects.nonNull(body)) {
@@ -28,7 +29,7 @@ public final class HttpUtils {
             } catch (IllegalArgumentException e) {
             }
         }
-        return Optional.ofNullable(ret);
+        return ret;
     }
 
     private static JsonObject getBody(RoutingContext rc) {
@@ -39,12 +40,12 @@ public final class HttpUtils {
         }
     }
 
-    public static <T> void validate(Validator validator, Optional<? extends Request> optional, ResponseData<T> responseData) {
-        optional.ifPresentOrElse(req -> {
-            if (req.isInvalid(validator)) {
-                responseData.setParamErrorMessage(req.getParamErrorMessage());
-            }
-        }, () -> responseData.setErrorCode(ErrorCode.PARAM_ERROR));
+    public static <T> void validate(Validator validator, Request request, ResponseData<T> responseData) {
+        if (request.isInvalid(validator)) {
+            responseData.setParamErrorMessage(request.getParamErrorMessage());
+        } else {
+            responseData.setErrorCode(ErrorCode.PARAM_ERROR);
+        }
     }
 
     public static int getIntWithDefault(HttpServerRequest request, String name, int defaultValue) {

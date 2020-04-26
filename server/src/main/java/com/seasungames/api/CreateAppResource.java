@@ -40,22 +40,25 @@ public class CreateAppResource {
     @Route(methods = HttpMethod.POST, path = "v2/app/create", type = HandlerType.NORMAL)
     void createApp(RoutingContext rc) {
         ResponseData<Void> responseData = ResponseDataUtil.buildSuccess();
-        var optional = HttpUtils.parseRequest(rc, CreateAppRequest.class);
-        HttpUtils.validate(validator, optional, responseData);
+        var request = HttpUtils.parseRequest(rc, CreateAppRequest.class);
+        HttpUtils.validate(validator, request, responseData);
         if (responseData.error()) {
             rc.response().end(Json.encode(responseData));
             return;
         }
 
-        var request = optional.get();
         var appItem = AppItem.builder()
                 .ctime(Instant.now().getEpochSecond())
                 .description(request.getDescription())
                 .app(request.getApp())
                 .alias(request.getAlias()).build();
         appStore.save(appItem, ar -> {
-            if (!ar.succeeded()) {
-                responseData.setErrorCode(ErrorCode.DB_ERROR);
+            if (ar.succeeded()) {
+                if (!ar.result()) {
+                    responseData.setErrorCode(ErrorCode.APP_EXIST);
+                }
+            } else {
+                responseData.setErrorCode(ErrorCode.DB_ERROR, ar.cause());
             }
             rc.response().end(Json.encode(responseData));
         });

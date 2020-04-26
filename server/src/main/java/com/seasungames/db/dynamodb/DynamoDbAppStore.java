@@ -52,7 +52,7 @@ public class DynamoDbAppStore implements AppStore {
     }
 
     @Override
-    public void save(AppItem appItem, Handler<AsyncResult<Void>> resultHandler) {
+    public void save(AppItem appItem, Handler<AsyncResult<Boolean>> resultHandler) {
         Objects.requireNonNull(appItem, "appItem");
         Objects.requireNonNull(resultHandler, "resultHandler");
         var request = PutItemRequest.builder()
@@ -62,13 +62,16 @@ public class DynamoDbAppStore implements AppStore {
                 .build();
 
         client.putItem(request).whenComplete((response, err) ->
-                pcall(() -> {
-                    if (response != null) {
-                        resultHandler.handle(Future.succeededFuture());
-                    } else {
-                        resultHandler.handle(Future.failedFuture(err));
-                    }
-                }));
+                pcall(() ->
+                        Optional.ofNullable(response).ifPresentOrElse(res -> resultHandler.handle(Future.succeededFuture(true)),
+                                () -> {
+                                    if (err.getCause() instanceof ConditionalCheckFailedException) {
+                                        resultHandler.handle(Future.succeededFuture(false));
+                                    } else {
+                                        resultHandler.handle(Future.failedFuture(err));
+                                    }
+                                })
+                ));
     }
 
     private String getConditionExpressionForSave() {

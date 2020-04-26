@@ -80,12 +80,6 @@ public class DynamoDbAppStore implements AppStore {
 
     @Override
     public void exist(String app, Handler<AsyncResult<Boolean>> resultHandler) {
-
-        Future.<AppItem>future(f ->
-                get(app, f)
-        ).compose(result ->
-                Future.<Boolean>future(p -> p.complete(Objects.nonNull(result)))
-        ).setHandler(resultHandler);
     }
 
     @Override
@@ -113,7 +107,7 @@ public class DynamoDbAppStore implements AppStore {
     }
 
     @Override
-    public void get(String app, Handler<AsyncResult<AppItem>> resultHandler) {
+    public void get(String app, Handler<AsyncResult<Optional<AppItem>>> resultHandler) {
         final var getItemRequest = GetItemRequest.builder()
                 .tableName(tableName)
                 .key(Map.of(HASH_KEY_ID, AttributeValue.builder().s(app).build()))
@@ -123,7 +117,7 @@ public class DynamoDbAppStore implements AppStore {
         client.getItem(getItemRequest).whenComplete((response, err) ->
                 pcall(() -> {
                     if (response != null) {
-                        resultHandler.handle(Future.succeededFuture(from(response.item())));
+                        resultHandler.handle(Future.succeededFuture(Optional.ofNullable(from(response.item()))));
                     } else {
                         resultHandler.handle(Future.failedFuture(err));
                     }

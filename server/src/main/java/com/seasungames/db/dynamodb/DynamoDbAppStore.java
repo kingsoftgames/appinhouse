@@ -79,31 +79,31 @@ public class DynamoDbAppStore implements AppStore {
     }
 
     @Override
-    public void exist(String app, Handler<AsyncResult<Boolean>> resultHandler) {
+    public void getFirst(boolean ascend, Handler<AsyncResult<Optional<AppItem>>> resultHandler) {
+
+        Objects.requireNonNull(resultHandler, "resultHandler");
+        String keyConditionExpression = "#key = :key";
+        Map<String, String> expressionAttributeNames = Map.of("#key", GSI_HASH_KEY);
+        Map<String, AttributeValue> expressionAttributeValues = Map.of(":key", AttributeValue.builder().s(GSI_HASH_KEY).build());
+        getByLimit(1, ascend, keyConditionExpression, expressionAttributeNames, expressionAttributeValues, ar -> {
+            if (ar.succeeded()) {
+                resultHandler.handle(Future.succeededFuture(Optional.ofNullable(getFirst(ar.result()))));
+            } else {
+                resultHandler.handle(Future.failedFuture(ar.cause()));
+            }
+        });
     }
 
     @Override
     public void getByLimit(long ctime, int limit, Handler<AsyncResult<List<AppItem>>> resultHandler) {
         Objects.requireNonNull(resultHandler, "resultHandler");
-        Map<String, AttributeValue> expressionAttributeValues = new HashMap<>();
-        var request = QueryRequest.builder().tableName(tableName)
-                .indexName(GSI_CREATE_TIME_INDEX_NAME)
-                .returnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
-                .keyConditionExpression("#key = :key and #ctime < :ctime")
-                .expressionAttributeNames(Map.of("#ctime", ATTRIBUTE_CREATE_TIME, "#key", GSI_HASH_KEY))
-                .expressionAttributeValues(Map.of(":ctime", AttributeValue.builder().n(String.valueOf(ctime)).build(),
-                        ":key", AttributeValue.builder().s(GSI_HASH_KEY).build()))
-                .scanIndexForward(false)
-                .limit(limit).build();
-
-        client.query(request).whenComplete((response, err) ->
-                pcall(() -> {
-                    if (response != null) {
-                        resultHandler.handle(Future.succeededFuture(froms(response.items())));
-                    } else {
-                        resultHandler.handle(Future.failedFuture(err));
-                    }
-                }));
+        getByLimit(ctime, limit, false, ar -> {
+            if (ar.succeeded()) {
+                resultHandler.handle(Future.succeededFuture(ar.result()));
+            } else {
+                resultHandler.handle(Future.failedFuture(ar.cause()));
+            }
+        });
     }
 
     @Override
@@ -143,42 +143,7 @@ public class DynamoDbAppStore implements AppStore {
     }
 
     @Override
-    public void change(String source, String target, Handler<AsyncResult<Void>> resultHandler) {
-        Objects.requireNonNull(source, "target");
-        Objects.requireNonNull(resultHandler, "resultHandler");
-        Future.<List<AppItem>>future(f ->
-                batchGetForChange(source, target, f)
-        ).compose(result ->
-                Future.<Void>future(f ->
-                        batchWriteForChange(result.get(0), result.get(1), f)
-                )
-        ).setHandler(resultHandler);
-    }
-
-    private void batchGetForChange(String source, String target, Handler<AsyncResult<List<AppItem>>> resultHandler) {
-        var keys = new ArrayList<Map<String, AttributeValue>>(2);
-        keys.add(Map.of(HASH_KEY_ID, AttributeValue.builder().s(source).build()));
-        keys.add(Map.of(HASH_KEY_ID, AttributeValue.builder().s(source).build()));
-        var request = BatchGetItemRequest.builder()
-                .requestItems(Map.of(tableName, KeysAndAttributes.builder()
-                        .keys(keys).build())).build();
-        client.batchGetItem(request).whenComplete((response, err) ->
-                pcall(() -> {
-                    if (response != null) {
-                        var items = response.responses().get(tableName);
-                        if (Objects.isNull(items) || items.size() != 2) {
-                            resultHandler.handle(Future.failedFuture("app not exist!"));
-                        } else {
-                            resultHandler.handle(Future.succeededFuture(froms(items)));
-                        }
-
-                    } else {
-                        resultHandler.handle(Future.failedFuture(err));
-                    }
-                }));
-    }
-
-    private void batchWriteForChange(AppItem source, AppItem target, Handler<AsyncResult<Void>> resultHandler) {
+    public void change(AppItem source, AppItem target, Handler<AsyncResult<Void>> resultHandler) {
         var ctime = source.ctime();
         source.ctime(target.ctime());
         target.ctime(ctime);
@@ -207,20 +172,55 @@ public class DynamoDbAppStore implements AppStore {
     }
 
     @Override
-    public void count(Handler<AsyncResult<Long>> resultHandler) {
-        var builder = DescribeTableRequest.builder().tableName(tableName);
-        client.describeTable(builder.build()).whenComplete((response, err) ->
-                pcall(() -> Optional.of(response)
-                        .ifPresentOrElse(
-                                resp -> Optional.of(resp.table())
-                                        .filter(table -> Objects.nonNull(table.tableStatus())
-                                                && table.tableStatus() == TableStatus.ACTIVE)
-                                        .ifPresentOrElse(
-                                                table -> resultHandler.handle(Future.succeededFuture(table.itemCount())),
-                                                () -> resultHandler.handle(Future.succeededFuture(0L))),
-                                () -> resultHandler.handle(Future.failedFuture(err))
+    public void getNext(long ctime, boolean ascend, Handler<AsyncResult<Optional<AppItem>>> resultHandler) {
+        Objects.requireNonNull(resultHandler, "resultHandler");
+        getByLimit(ctime, 1, ascend, ar -> {
+            if (ar.succeeded()) {
+                resultHandler.handle(Future.succeededFuture(Optional.ofNullable(getFirst(ar.result()))));
+            } else {
+                resultHandler.handle(Future.failedFuture(ar.cause()));
+            }
+        });
+    }
 
-                        )));
+    private void getByLimit(long ctime, int limit, boolean scanIndexForward, Handler<AsyncResult<List<AppItem>>> resultHandler) {
+        Objects.requireNonNull(resultHandler, "resultHandler");
+        String keyConditionExpression = "#key = :key and #ctime < :ctime";
+        if (scanIndexForward) {
+            keyConditionExpression = "#key = :key and #ctime > :ctime";
+        }
+        Map<String, String> expressionAttributeNames = Map.of("#ctime", ATTRIBUTE_CREATE_TIME, "#key", GSI_HASH_KEY);
+        Map<String, AttributeValue> expressionAttributeValues = Map.of(":ctime", AttributeValue.builder().n(String.valueOf(ctime)).build(),
+                ":key", AttributeValue.builder().s(GSI_HASH_KEY).build());
+        getByLimit(limit, scanIndexForward, keyConditionExpression, expressionAttributeNames, expressionAttributeValues, ar -> {
+            if (ar.succeeded()) {
+                resultHandler.handle(Future.succeededFuture(ar.result()));
+            } else {
+                resultHandler.handle(Future.failedFuture(ar.cause()));
+            }
+        });
+    }
+
+    private void getByLimit(int limit, boolean scanIndexForward, String keyConditionExpression, Map<String, String> expressionAttributeNames,
+                            Map<String, AttributeValue> expressionAttributeValues, Handler<AsyncResult<List<AppItem>>> resultHandler) {
+        Objects.requireNonNull(resultHandler, "resultHandler");
+        var request = QueryRequest.builder().tableName(tableName)
+                .indexName(GSI_CREATE_TIME_INDEX_NAME)
+                .returnConsumedCapacity(ReturnConsumedCapacity.TOTAL)
+                .keyConditionExpression(keyConditionExpression)
+                .expressionAttributeNames(expressionAttributeNames)
+                .expressionAttributeValues(expressionAttributeValues)
+                .scanIndexForward(scanIndexForward)
+                .limit(limit).build();
+
+        client.query(request).whenComplete((response, err) ->
+                pcall(() -> {
+                    if (response != null) {
+                        resultHandler.handle(Future.succeededFuture(froms(response.items())));
+                    } else {
+                        resultHandler.handle(Future.failedFuture(err));
+                    }
+                }));
     }
 
     @Override
@@ -276,6 +276,13 @@ public class DynamoDbAppStore implements AppStore {
                         .projectionType(ProjectionType.ALL)
                         .build())
                 .build());
+    }
+
+    private static AppItem getFirst(List<AppItem> appItems) {
+        if (Objects.isNull(appItems) || appItems.isEmpty()) {
+            return null;
+        }
+        return appItems.get(0);
     }
 
     private static List<AppItem> froms(List<Map<String, AttributeValue>> items) {

@@ -15,7 +15,7 @@ public interface AppStore {
 
     void save(AppItem appItem, Handler<AsyncResult<Boolean>> resultHandler);
 
-    void exist(String app, Handler<AsyncResult<Boolean>> resultHandler);
+    void getFirst(boolean ascend, Handler<AsyncResult<Optional<AppItem>>> resultHandler);
 
     void getByLimit(long ctime, int limit, Handler<AsyncResult<List<AppItem>>> resultHandler);
 
@@ -23,7 +23,7 @@ public interface AppStore {
 
     void delete(String app, Handler<AsyncResult<Void>> resultHandler);
 
-    void change(String source, String target, Handler<AsyncResult<Void>> resultHandler);
+    void change(AppItem source, AppItem target, Handler<AsyncResult<Void>> resultHandler);
 
-    void count(Handler<AsyncResult<Long>> resultHandler);
+    void getNext(long ctime, boolean ascend, Handler<AsyncResult<Optional<AppItem>>> resultHandler);
 }

@@ -1,6 +1,8 @@
 package com.seasungames.api;
 
 import com.seasungames.db.AppStore;
+import com.seasungames.db.DescStore;
+import com.seasungames.db.PlistStore;
 import com.seasungames.model.ErrorCode;
 import com.seasungames.model.ResponseData;
 import com.seasungames.model.ResponseDataUtil;
@@ -18,12 +20,24 @@ public class InitDbResource {
     @Inject
     AppStore appStore;
 
-    @Route(methods = HttpMethod.POST, path = "v2/initDb",  type = HandlerType.NORMAL)
+    @Inject
+    PlistStore plistStore;
+
+    @Inject
+    DescStore descStore;
+
+    @Route(methods = HttpMethod.POST, path = "v2/initDb", type = HandlerType.NORMAL)
     void initDb(RoutingContext rc) {
         ResponseData<Void> responseData = ResponseDataUtil.buildSuccess();
-        Future<Void> createApp = Future.future(f -> appStore.createTable(f));
-        createApp.setHandler(ar->{
-            if (!ar.succeeded()){
+        
+        Future.<Void>future(
+                f -> appStore.createTable(f)
+        ).compose(
+                v -> Future.<Void>future(f -> descStore.createTable(f))
+        ).compose(
+                v -> Future.<Void>future(f -> plistStore.createTable(f))
+        ).setHandler(ar -> {
+            if (ar.failed()) {
                 responseData.setErrorCode(ErrorCode.DB_ERROR);
             }
             rc.response().end(Json.encode(responseData));

@@ -38,7 +38,7 @@ public class MoveAppResource {
     AppStore appStore;
 
     @Route(methods = HttpMethod.POST, path = "v2/app/move", type = HandlerType.NORMAL)
-    void createApp(RoutingContext rc) {
+    void move(RoutingContext rc) {
         ResponseData<Void> responseData = ResponseDataUtil.buildSuccess();
         var request = HttpUtils.parseRequest(rc, MoveAppRequest.class);
         HttpUtils.validate(validator, request, responseData);

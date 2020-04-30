@@ -1,7 +1,7 @@
 package com.seasungames.model;
 
 import com.seasungames.constant.MoveOperation;
-import com.seasungames.validation.EnumValidation;
+import com.seasungames.validation.Enum;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,6 +18,6 @@ public class MoveAppRequest extends Request {
     @NotBlank(message = "app is not null")
     private String app;
 
-    @EnumValidation(enumClass = MoveOperation.class, method = "getOperation", message = "operation is invalid")
+    @Enum(enumClass = MoveOperation.class, method = "getOperation", message = "operation is invalid")
     private String operation;
 }

@@ -9,12 +9,12 @@ import java.lang.reflect.Method;
 /**
  * Created by jianghaitao on 2020/4/26.
  */
-public class EnumValidator implements ConstraintValidator<EnumValidation, String> {
+public class EnumValidator implements ConstraintValidator<Enum, String> {
 
-    private EnumValidation annotation;
+    private Enum annotation;
 
     @Override
-    public void initialize(EnumValidation constraintAnnotation) {
+    public void initialize(Enum constraintAnnotation) {
         annotation = constraintAnnotation;
     }
 

@@ -1,6 +1,6 @@
 package com.seasungames.validation;
 
-import com.seasungames.validation.EnumValidation.List;
+import com.seasungames.validation.Enum.List;
 
 import javax.validation.Constraint;
 import javax.validation.Payload;
@@ -20,12 +20,12 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 @Constraint(validatedBy = {EnumValidator.class})
 @Repeatable(List.class)
-public @interface EnumValidation {
+public @interface Enum {
 
     /**
      * 枚举的class类型
      */
-    Class<? extends java.lang.Enum<?>> enumClass();
+    Class<? extends java.lang.Enum> enumClass();
 
     String message() default "invalid Enum Value";
 
@@ -42,6 +42,6 @@ public @interface EnumValidation {
     @Target({METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE})
     @Retention(RUNTIME)
     @interface List {
-        EnumValidation[] value();
+        Enum[] value();
     }
 }

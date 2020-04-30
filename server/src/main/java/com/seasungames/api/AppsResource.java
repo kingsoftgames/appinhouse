@@ -2,7 +2,7 @@ package com.seasungames.api;
 
 import com.seasungames.config.ApiConfig;
 import com.seasungames.db.AppStore;
-import com.seasungames.db.pojo.AppItem;
+import com.seasungames.db.pojo.AppItems;
 import com.seasungames.model.*;
 import com.seasungames.util.HttpUtils;
 import io.quarkus.vertx.web.Route;
@@ -17,8 +17,7 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.validation.Validator;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created by jianghaitao on 2020/4/22.
@@ -55,7 +54,7 @@ public class AppsResource {
         }
         appStore.getByLimit(request.getLastCtime(), request.getLimit(), ar -> {
             if (ar.succeeded()) {
-                toResponses(ar.result(), request, responseData);
+                toResponses(ar.result(), responseData);
             } else {
                 responseData.setErrorCode(ErrorCode.DB_ERROR);
             }
@@ -72,36 +71,13 @@ public class AppsResource {
         return builder.limit(limit).lastCtime(lastCtime).build();
     }
 
-    private void toResponses(List<AppItem> list, AppsRequest request, ResponseData<AppsResponse> responseData) {
-        if (list.isEmpty()) {
+    private void toResponses(AppItems appItems, ResponseData<AppsResponse> responseData) {
+        if (appItems.items().isEmpty()) {
             return;
         }
 
-        List<AppResponse> ret = new ArrayList<>(list.size());
-        for (var item : list) {
-            ret.add(AppResponse.from(item));
-        }
-        responseData.setData(AppsResponse.builder().items(ret).build());
-    }
+        var items = appItems.items().stream().map(AppResponse::from).collect(Collectors.toList());
 
-//    private static int indexOfCtime(List<AppItem> list, long ctime) {
-//        var ret = -1;
-//        var size = list.size();
-//        var maxCtime = list.get(0).ctime();
-//        var minCtime = list.get(size-1).ctime();
-//        if (ctime >= maxCtime){
-//            ret = 0;
-//            return ret;
-//        }
-//        if (ctime <= minCtime){
-//            return ret;
-//        }
-//        for (int i = 0; i < size; i++) {
-//            if (list.get(i).ctime() == ctime) {
-//                ret = i + 1;
-//                break;
-//            }
-//        }
-//        return ret;
-//    }
+        responseData.setData(AppsResponse.builder().items(items).hasMore(appItems.hasMore()).build());
+    }
 }

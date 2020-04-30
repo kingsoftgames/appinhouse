@@ -17,7 +17,7 @@ import java.util.List;
 @RegisterForReflection
 public class AppsResponse {
     List<AppResponse> items;
-    int page;
-    @JsonProperty("total_page")
-    int totalPage;
+
+    @JsonProperty("has_more")
+    boolean hasMore;
 }

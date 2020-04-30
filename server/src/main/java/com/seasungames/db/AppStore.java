@@ -1,10 +1,10 @@
 package com.seasungames.db;
 
 import com.seasungames.db.pojo.AppItem;
+import com.seasungames.db.pojo.AppItems;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -17,7 +17,7 @@ public interface AppStore {
 
     void getFirst(boolean ascend, Handler<AsyncResult<Optional<AppItem>>> resultHandler);
 
-    void getByLimit(long ctime, int limit, Handler<AsyncResult<List<AppItem>>> resultHandler);
+    void getByLimit(long ctime, int limit, Handler<AsyncResult<AppItems>> resultHandler);
 
     void get(String app, Handler<AsyncResult<Optional<AppItem>>> resultHandler);
 

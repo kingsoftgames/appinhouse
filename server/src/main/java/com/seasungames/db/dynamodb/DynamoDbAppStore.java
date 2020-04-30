@@ -3,6 +3,7 @@ package com.seasungames.db.dynamodb;
 import com.seasungames.config.DbConfig;
 import com.seasungames.db.AppStore;
 import com.seasungames.db.pojo.AppItem;
+import com.seasungames.db.pojo.AppItems;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -87,7 +88,7 @@ public class DynamoDbAppStore implements AppStore {
         Map<String, AttributeValue> expressionAttributeValues = Map.of(":key", AttributeValue.builder().s(GSI_HASH_KEY).build());
         getByLimit(1, ascend, keyConditionExpression, expressionAttributeNames, expressionAttributeValues, ar -> {
             if (ar.succeeded()) {
-                resultHandler.handle(Future.succeededFuture(Optional.ofNullable(getFirst(ar.result()))));
+                resultHandler.handle(Future.succeededFuture(Optional.ofNullable(getFirst(froms(ar.result().items())))));
             } else {
                 resultHandler.handle(Future.failedFuture(ar.cause()));
             }
@@ -95,11 +96,12 @@ public class DynamoDbAppStore implements AppStore {
     }
 
     @Override
-    public void getByLimit(long ctime, int limit, Handler<AsyncResult<List<AppItem>>> resultHandler) {
+    public void getByLimit(long ctime, int limit, Handler<AsyncResult<AppItems>> resultHandler) {
         Objects.requireNonNull(resultHandler, "resultHandler");
         getByLimit(ctime, limit, false, ar -> {
             if (ar.succeeded()) {
-                resultHandler.handle(Future.succeededFuture(ar.result()));
+                var hasMore = ar.result().hasLastEvaluatedKey();
+                resultHandler.handle(Future.succeededFuture(getAppItems(froms(ar.result().items()), hasMore)));
             } else {
                 resultHandler.handle(Future.failedFuture(ar.cause()));
             }
@@ -176,14 +178,14 @@ public class DynamoDbAppStore implements AppStore {
         Objects.requireNonNull(resultHandler, "resultHandler");
         getByLimit(ctime, 1, ascend, ar -> {
             if (ar.succeeded()) {
-                resultHandler.handle(Future.succeededFuture(Optional.ofNullable(getFirst(ar.result()))));
+                resultHandler.handle(Future.succeededFuture(Optional.ofNullable(getFirst(froms(ar.result().items())))));
             } else {
                 resultHandler.handle(Future.failedFuture(ar.cause()));
             }
         });
     }
 
-    private void getByLimit(long ctime, int limit, boolean scanIndexForward, Handler<AsyncResult<List<AppItem>>> resultHandler) {
+    private void getByLimit(long ctime, int limit, boolean scanIndexForward, Handler<AsyncResult<QueryResponse>> resultHandler) {
         Objects.requireNonNull(resultHandler, "resultHandler");
         String keyConditionExpression = "#key = :key and #ctime < :ctime";
         if (scanIndexForward) {
@@ -202,7 +204,7 @@ public class DynamoDbAppStore implements AppStore {
     }
 
     private void getByLimit(int limit, boolean scanIndexForward, String keyConditionExpression, Map<String, String> expressionAttributeNames,
-                            Map<String, AttributeValue> expressionAttributeValues, Handler<AsyncResult<List<AppItem>>> resultHandler) {
+                            Map<String, AttributeValue> expressionAttributeValues, Handler<AsyncResult<QueryResponse>> resultHandler) {
         Objects.requireNonNull(resultHandler, "resultHandler");
         var request = QueryRequest.builder().tableName(tableName)
                 .indexName(GSI_CREATE_TIME_INDEX_NAME)
@@ -216,7 +218,7 @@ public class DynamoDbAppStore implements AppStore {
         client.query(request).whenComplete((response, err) ->
                 pcall(() -> {
                     if (response != null) {
-                        resultHandler.handle(Future.succeededFuture(froms(response.items())));
+                        resultHandler.handle(Future.succeededFuture(response));
                     } else {
                         resultHandler.handle(Future.failedFuture(err));
                     }
@@ -276,6 +278,11 @@ public class DynamoDbAppStore implements AppStore {
                         .projectionType(ProjectionType.ALL)
                         .build())
                 .build());
+    }
+
+
+    private static AppItems getAppItems(List<AppItem> appItems, boolean hasMore) {
+        return AppItems.builder().items(appItems).hasMore(hasMore).build();
     }
 
     private static AppItem getFirst(List<AppItem> appItems) {

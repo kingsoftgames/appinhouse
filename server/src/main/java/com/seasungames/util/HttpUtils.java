@@ -25,8 +25,9 @@ public final class HttpUtils {
         T ret = null;
         if (Objects.nonNull(body)) {
             try {
-                ret = rc.getBodyAsJson().mapTo(clazz);
+                ret = body.mapTo(clazz);
             } catch (IllegalArgumentException e) {
+                e.printStackTrace();
             }
         }
         return ret;

@@ -4,6 +4,7 @@ import io.netty.util.internal.StringUtil;
 
 import javax.validation.ConstraintValidator;
 import javax.validation.ConstraintValidatorContext;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 /**
@@ -32,10 +33,9 @@ public class EnumValidator implements ConstraintValidator<Enum, String> {
                     return true;
                 }
             }
-        } catch (Exception e) {
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
-
         return false;
     }
 }

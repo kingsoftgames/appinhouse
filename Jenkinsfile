@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 def loadAppinhouseConf() {
-    def resource = libraryResource 'appinhouse.conf'
-    return readProperties(text: resource)
+    def resource = libraryResource 'appinhouse.yml'
+    return readYaml(text: resource)
 }
 
 def getHost() {

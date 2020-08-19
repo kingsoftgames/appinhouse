@@ -2,8 +2,8 @@ package com.seasungames.api;
 
 import com.seasungames.db.AppStore;
 import com.seasungames.db.pojo.AppItem;
-import com.seasungames.model.CreateAppRequest;
 import com.seasungames.model.ErrorCode;
+import com.seasungames.model.ModifyAppRequest;
 import com.seasungames.model.ResponseData;
 import com.seasungames.model.ResponseDataUtil;
 import com.seasungames.util.HttpUtils;
@@ -17,14 +17,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.Validator;
-import java.time.Instant;
 
 /**
  * Created by jianghaitao on 2020/4/22.
  */
-public class CreateAppResource {
+public class ModifyAppResource {
 
-    private static final Logger log = LoggerFactory.getLogger(CreateAppResource.class);
+    private static final Logger log = LoggerFactory.getLogger(ModifyAppResource.class);
 
     @Inject
     Validator validator;
@@ -33,10 +32,10 @@ public class CreateAppResource {
     AppStore appStore;
 
 
-    @Route(methods = HttpMethod.POST, path = "v2/app/create", type = HandlerType.NORMAL)
-    void createApp(RoutingContext rc) {
+    @Route(methods = HttpMethod.POST, path = "v2/app/modify", type = HandlerType.NORMAL)
+    void modifyApp(RoutingContext rc) {
         ResponseData<Void> responseData = ResponseDataUtil.buildSuccess();
-        var request = HttpUtils.parseRequest(rc, CreateAppRequest.class);
+        var request = HttpUtils.parseRequest(rc, ModifyAppRequest.class);
         HttpUtils.validate(validator, request, responseData);
         if (responseData.error()) {
             rc.response().end(Json.encode(responseData));
@@ -44,17 +43,16 @@ public class CreateAppResource {
         }
 
         var appItem = AppItem.builder()
-                .ctime(Instant.now().getEpochSecond())
                 .description(request.getDescription())
                 .app(request.getApp())
                 .alias(request.getAlias())
                 .iosTitle(request.getIosTitle())
                 .iosBundleId(request.getIosBundleId())
                 .build();
-        appStore.save(appItem, ar -> {
+        appStore.update(appItem, ar -> {
             if (ar.succeeded()) {
                 if (!ar.result()) {
-                    responseData.setErrorCode(ErrorCode.APP_EXIST);
+                    responseData.setErrorCode(ErrorCode.APP_NOT_EXIST);
                 }
             } else {
                 responseData.setErrorCode(ErrorCode.DB_ERROR, ar.cause());

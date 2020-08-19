@@ -14,7 +14,7 @@ import javax.validation.constraints.NotBlank;
 @Getter
 @Setter
 @RegisterForReflection
-public class CreateAppRequest extends Request {
+public class ModifyAppRequest extends Request {
     @NotBlank(message = "app is not null")
     private String app;
 

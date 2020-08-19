@@ -15,8 +15,8 @@ public enum ErrorCode {
     PARAM_ERROR(3, "params error"),
 
     // 100~199为应用相关的错误
-    APP_EXIST(100, "app exist!");
-
+    APP_EXIST(100, "app exist!"),
+    APP_NOT_EXIST(101, "app not exist!");
 
     private int code;
     private String msg;

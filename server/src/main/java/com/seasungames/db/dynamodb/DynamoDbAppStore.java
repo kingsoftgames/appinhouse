@@ -32,6 +32,8 @@ public class DynamoDbAppStore implements AppStore {
     private static final String ATTRIBUTE_DESCRIPTION = "description";
     private static final String ATTRIBUTE_CREATE_TIME = "ctime";
     private static final String ATTRIBUTE_ALIAS = "alias";
+    private static final String ATTRIBUTE_IOS_TITLE = "iosTitle";
+    private static final String ATTRIBUTE_IOS_BUNDLE_ID = "iosBundleId";
     // 存储成同一个值，为了分页查询, key是gid,值也是gid
     private static final String GSI_HASH_KEY = "gid";
     private static final String GSI_CREATE_TIME_INDEX_NAME = "GsiCtimeIndex";
@@ -75,8 +77,41 @@ public class DynamoDbAppStore implements AppStore {
                 ));
     }
 
-    private String getConditionExpressionForSave() {
-        return "attribute_not_exists(" + HASH_KEY_ID + ") and attribute_not_exists(" + HASH_KEY_ID + ")";
+    @Override
+    public void update(AppItem appItem, Handler<AsyncResult<Boolean>> resultHandler) {
+        Objects.requireNonNull(appItem, "appItem");
+        Objects.requireNonNull(resultHandler, "resultHandler");
+        var request = UpdateItemRequest.builder()
+                .tableName(tableName)
+                .key(Map.of(HASH_KEY_ID, AttributeValue.builder().s(appItem.app()).build()))
+                .conditionExpression(getConditionExpressionForUpdate())
+                .updateExpression("set description=:description, alias=:alias, iosTitle=:iosTitle, iosBundleId=:iosBundleId")
+                .expressionAttributeValues(Map.of(
+                        ":description", AttributeValue.builder().s(appItem.description()).build(),
+                        ":alias", AttributeValue.builder().s(appItem.alias()).build(),
+                        ":iosTitle", AttributeValue.builder().s(appItem.iosTitle()).build(),
+                        ":iosBundleId", AttributeValue.builder().s(appItem.iosBundleId()).build()))
+                .build();
+
+        client.updateItem(request).whenComplete((response, err) ->
+                pcall(() ->
+                        Optional.ofNullable(response).ifPresentOrElse(res -> resultHandler.handle(Future.succeededFuture(true)),
+                                () -> {
+                                    if (err.getCause() instanceof ConditionalCheckFailedException) {
+                                        resultHandler.handle(Future.succeededFuture(false));
+                                    } else {
+                                        resultHandler.handle(Future.failedFuture(err));
+                                    }
+                                })
+                ));
+    }
+
+    private static String getConditionExpressionForSave() {
+        return "attribute_not_exists(" + HASH_KEY_ID + ")";
+    }
+
+    private static String getConditionExpressionForUpdate() {
+        return "attribute_exists(" + HASH_KEY_ID + ")";
     }
 
     @Override
@@ -313,6 +348,8 @@ public class DynamoDbAppStore implements AppStore {
                 .ctime(Integer.parseInt(item.get(ATTRIBUTE_CREATE_TIME).n()))
                 .description(item.get(ATTRIBUTE_DESCRIPTION).s())
                 .alias(item.get(ATTRIBUTE_ALIAS).s())
+                .iosBundleId(item.get(ATTRIBUTE_IOS_BUNDLE_ID).s())
+                .iosTitle(item.get(ATTRIBUTE_IOS_TITLE).s())
                 .build();
     }
 
@@ -323,6 +360,8 @@ public class DynamoDbAppStore implements AppStore {
         map.put(ATTRIBUTE_DESCRIPTION, AttributeValue.builder().s(appItem.description()).build());
         map.put(ATTRIBUTE_ALIAS, AttributeValue.builder().s(appItem.alias()).build());
         map.put(GSI_HASH_KEY, AttributeValue.builder().s(GSI_HASH_KEY).build());
+        map.put(ATTRIBUTE_IOS_TITLE, AttributeValue.builder().s(appItem.iosTitle()).build());
+        map.put(ATTRIBUTE_IOS_BUNDLE_ID, AttributeValue.builder().s(appItem.iosBundleId()).build());
         return map;
     }
 }

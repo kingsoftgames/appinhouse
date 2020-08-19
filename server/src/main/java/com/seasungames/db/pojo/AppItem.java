@@ -20,4 +20,6 @@ public class AppItem {
     private String description;
     private String alias;
     private long ctime;
+    private String iosTitle;
+    private String iosBundleId;
 }

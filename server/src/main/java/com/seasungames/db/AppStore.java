@@ -15,6 +15,8 @@ public interface AppStore {
 
     void save(AppItem appItem, Handler<AsyncResult<Boolean>> resultHandler);
 
+    void update(AppItem appItem, Handler<AsyncResult<Boolean>> resultHandler);
+
     void getFirst(boolean ascend, Handler<AsyncResult<Optional<AppItem>>> resultHandler);
 
     void getByLimit(long ctime, int limit, Handler<AsyncResult<AppItems>> resultHandler);

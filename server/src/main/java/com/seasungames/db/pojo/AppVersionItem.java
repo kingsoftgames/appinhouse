@@ -1,6 +1,5 @@
 package com.seasungames.db.pojo;
 
-import com.seasungames.constant.Environment;
 import com.seasungames.constant.Platform;
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import lombok.Builder;
@@ -16,13 +15,15 @@ import lombok.experimental.Accessors;
 @Builder
 @Accessors(fluent = true)
 @RegisterForReflection
-public class DescItem {
+public class AppVersionItem {
     private String id;
     private String version;
+    private String url;
+    private long time;
     private String desc;
     private long ttl;
 
-    public static String generateId(Platform platform, Environment env, String app) {
-        return platform.name() + ":" + env.name() + ":" + app;
+    public static String generateId(Platform platform, String app) {
+        return platform.name() + ":" + app;
     }
 }

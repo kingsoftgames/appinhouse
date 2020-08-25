@@ -220,6 +220,21 @@ public class DynamoDbAppStore implements AppStore {
         });
     }
 
+    @Override
+    public void exist(String app, Handler<AsyncResult<Boolean>> resultHandler) {
+        get(app, ar -> {
+            if (ar.succeeded()) {
+                if (ar.result().isPresent()) {
+                    resultHandler.handle(Future.succeededFuture(true));
+                } else {
+                    resultHandler.handle(Future.succeededFuture(false));
+                }
+            } else {
+                resultHandler.handle(Future.failedFuture(ar.cause()));
+            }
+        });
+    }
+
     private void getByLimit(long ctime, int limit, boolean scanIndexForward, Handler<AsyncResult<QueryResponse>> resultHandler) {
         Objects.requireNonNull(resultHandler, "resultHandler");
         String keyConditionExpression = "#key = :key and #ctime < :ctime";

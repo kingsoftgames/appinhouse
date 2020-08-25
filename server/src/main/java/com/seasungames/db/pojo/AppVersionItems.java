@@ -6,17 +6,18 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.util.List;
+
 /**
- * Created by jianghaitao on 2020/4/21.
+ * Created by jianghaitao on 2020/4/28.
  */
+
 @Getter
 @Setter
 @Builder
 @Accessors(fluent = true)
 @RegisterForReflection
-public class PlistItem {
-    private String id;
-    private String version;
-    private String body;
-    private long ttl;
+public class AppVersionItems {
+    private List<AppVersionItem> items;
+    private boolean hasMore;
 }

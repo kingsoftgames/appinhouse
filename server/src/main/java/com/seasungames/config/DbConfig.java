@@ -20,12 +20,8 @@ public interface DbConfig {
     @ConfigProperty(name = "table.name.apps", defaultValue = "appinhouse.apps")
     String appsTableName();
 
-    @ConfigProperty(name = "table.name.descs", defaultValue = "appinhouse.descs")
-    String descsTableName();
-
-
-    @ConfigProperty(name = "table.name.plists", defaultValue = "appinhouse.plists")
-    String plistsTableName();
+    @ConfigProperty(name = "table.name.appversions", defaultValue = "appinhouse.appversions")
+    String appVersionsTableName();
 
     @ConfigProperty(name = "ttl.days", defaultValue = "30")
     int ttlDays();

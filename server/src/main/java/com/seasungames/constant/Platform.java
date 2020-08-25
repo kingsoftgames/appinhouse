@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
  */
 public enum Platform {
     ANDROID("android"),
-    IOS(Constants.IOS_PLATFORM);
+    IOS("ios");
 
     private static final Map<String, Platform> map;
 
@@ -29,7 +29,7 @@ public enum Platform {
         return name;
     }
 
-    public static Optional<Platform> of(String operation) {
-        return Optional.ofNullable(map.get(operation));
+    public static Optional<Platform> of(String name) {
+        return Optional.ofNullable(map.get(name));
     }
 }

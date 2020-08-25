@@ -28,4 +28,6 @@ public interface AppStore {
     void change(AppItem source, AppItem target, Handler<AsyncResult<Void>> resultHandler);
 
     void getNext(long ctime, boolean ascend, Handler<AsyncResult<Optional<AppItem>>> resultHandler);
+
+    void exist(String app, Handler<AsyncResult<Boolean>> resultHandler);
 }

@@ -255,14 +255,18 @@ public class DynamoDbAppVersionStore implements AppVersionStore {
         if (Objects.isNull(item) || item.size() == 0) {
             return null;
         }
-        return AppVersionItem.builder()
-                .id(item.get(HASH_KEY_ID).s())
+        var builder = AppVersionItem.builder();
+
+        builder.id(item.get(HASH_KEY_ID).s())
                 .version(item.get(RANGE_KEY_ID).s())
-                .desc(item.get(ATTRIBUTE_DESC).s())
                 .url(item.get(ATTRIBUTE_URL).s())
                 .time(Long.parseLong(item.get(ATTRIBUTE_CREATE_TIME).n()))
-                .ttl(Long.parseLong(item.get(TTL).n()))
-                .build();
+                .ttl(Long.parseLong(item.get(TTL).n()));
+        if (item.containsKey(ATTRIBUTE_DESC)) {
+            builder.desc(item.get(ATTRIBUTE_DESC).s());
+
+        }
+        return builder.build();
     }
 
     private Map<String, AttributeValue> toItem(AppVersionItem item) {

@@ -26,4 +26,13 @@ public class AppVersionItem {
     public static String generateId(Platform platform, String app) {
         return platform.name() + ":" + app;
     }
+
+
+    public String app() {
+        return id.split(":")[1];
+    }
+
+    public String platform() {
+        return id.split(":")[0];
+    }
 }

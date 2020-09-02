@@ -2,7 +2,6 @@ package com.seasungames.constant;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -29,7 +28,7 @@ public enum Platform {
         return name;
     }
 
-    public static Optional<Platform> of(String name) {
-        return Optional.ofNullable(map.get(name));
+    public static Platform of(String name) {
+        return map.get(name);
     }
 }

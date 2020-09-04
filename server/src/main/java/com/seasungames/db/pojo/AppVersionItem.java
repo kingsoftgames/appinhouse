@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
 
+import java.util.Map;
+
 /**
  * Created by jianghaitao on 2020/4/21.
  */
@@ -22,6 +24,7 @@ public class AppVersionItem {
     private long time;
     private String desc;
     private long ttl;
+    private Map<String, String> moreUrls;
 
     public static String generateId(Platform platform, String app) {
         return platform.name() + ":" + app;

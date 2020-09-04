@@ -1,5 +1,6 @@
 package com.seasungames.db.dynamodb;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.seasungames.config.DbConfig;
 import com.seasungames.db.AppVersionStore;
 import com.seasungames.db.pojo.AppVersionItem;
@@ -8,6 +9,8 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.jackson.JacksonCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
@@ -33,10 +36,14 @@ public class DynamoDbAppVersionStore implements AppVersionStore {
     private static final String ATTRIBUTE_DESC = "desc";
     private static final String ATTRIBUTE_URL = "url";
     private static final String ATTRIBUTE_CREATE_TIME = "ctime";
+    private static final String ATTRIBUTE_MORE_URLS = "moreUrls";
     private static final String TTL = "ttl";
     // 存储成同一个值，为了按时间分页查询, key是gid,值也是gid
     private static final String GSI_HASH_KEY = "gid";
     private static final String GSI_CREATE_TIME_INDEX_NAME = "GsiCtimeIndex";
+
+    private static final TypeReference<Map<String, String>> ATTRIBUTE_MORE_URLS_TYPE = new TypeReference<Map<String, String>>() {
+    };
 
     @Inject
     Vertx vertx;
@@ -75,25 +82,30 @@ public class DynamoDbAppVersionStore implements AppVersionStore {
     }
 
     @Override
-    public void save(AppVersionItem appVersionItem, Handler<AsyncResult<Void>> resultHandler) {
+    public void save(AppVersionItem appVersionItem, Handler<AsyncResult<Boolean>> resultHandler) {
         Objects.requireNonNull(appVersionItem, "appVersionItem");
         Objects.requireNonNull(resultHandler, "resultHandler");
         var request = PutItemRequest.builder()
                 .tableName(tableName)
+                .conditionExpression(getConditionExpressionForSave())
                 .item(toItem(appVersionItem))
                 .build();
 
         client.putItem(request).whenComplete((response, err) ->
                 pcall(() ->
-                        Optional.ofNullable(response).ifPresentOrElse(res -> resultHandler.handle(Future.succeededFuture()),
+                        Optional.ofNullable(response).ifPresentOrElse(res -> resultHandler.handle(Future.succeededFuture(true)),
                                 () -> {
                                     if (err.getCause() instanceof ConditionalCheckFailedException) {
-                                        resultHandler.handle(Future.succeededFuture());
+                                        resultHandler.handle(Future.succeededFuture(false));
                                     } else {
                                         resultHandler.handle(Future.failedFuture(err));
                                     }
                                 })
                 ));
+    }
+
+    private static String getConditionExpressionForSave() {
+        return "attribute_not_exists(" + HASH_KEY_ID + ") AND attribute_not_exists(" + RANGE_KEY_ID + ")";
     }
 
     @Override
@@ -172,12 +184,43 @@ public class DynamoDbAppVersionStore implements AppVersionStore {
     public void getLast(String id, Handler<AsyncResult<Optional<AppVersionItem>>> resultHandler) {
         getByLimit(id, Instant.now().getEpochSecond(), 1, false, ar -> {
             if (ar.succeeded()) {
-                var hasMore = ar.result().hasLastEvaluatedKey();
                 resultHandler.handle(Future.succeededFuture(getFirst(froms(ar.result().items()))));
             } else {
                 resultHandler.handle(Future.failedFuture(ar.cause()));
             }
         });
+    }
+
+    @Override
+    public void addUrl(AppVersionItem appVersionItem, Handler<AsyncResult<Void>> resultHandler) {
+        Objects.requireNonNull(appVersionItem, "appVersionItem");
+        Objects.requireNonNull(resultHandler, "resultHandler");
+        var request = UpdateItemRequest.builder()
+                .tableName(tableName)
+                .key(Map.of(HASH_KEY_ID, AttributeValue.builder().s(appVersionItem.id()).build(),
+                        RANGE_KEY_ID, AttributeValue.builder().s(appVersionItem.version()).build()))
+                .conditionExpression(getConditionExpressionForUpdate())
+                .updateExpression("set moreUrls=:moreUrls")
+                .expressionAttributeValues(Map.of(
+                        ":moreUrls", AttributeValue.builder().s(Json.encode(appVersionItem.moreUrls())).build()))
+                .build();
+
+
+        client.updateItem(request).whenComplete((response, err) ->
+                pcall(() ->
+                        Optional.ofNullable(response).ifPresentOrElse(res -> resultHandler.handle(Future.succeededFuture()),
+                                () -> {
+                                    if (err.getCause() instanceof ConditionalCheckFailedException) {
+                                        resultHandler.handle(Future.succeededFuture());
+                                    } else {
+                                        resultHandler.handle(Future.failedFuture(err));
+                                    }
+                                })
+                ));
+    }
+
+    private static String getConditionExpressionForUpdate() {
+        return "attribute_exists(" + HASH_KEY_ID + ")";
     }
 
     private static Optional<AppVersionItem> getFirst(List<AppVersionItem> appItems) {
@@ -264,7 +307,11 @@ public class DynamoDbAppVersionStore implements AppVersionStore {
                 .ttl(Long.parseLong(item.get(TTL).n()));
         if (item.containsKey(ATTRIBUTE_DESC)) {
             builder.desc(item.get(ATTRIBUTE_DESC).s());
+        }
 
+        if (item.containsKey(ATTRIBUTE_MORE_URLS)) {
+            var moreUrlStr = item.get(ATTRIBUTE_MORE_URLS).s();
+            builder.moreUrls(JacksonCodec.decodeValue(moreUrlStr, ATTRIBUTE_MORE_URLS_TYPE));
         }
         return builder.build();
     }

@@ -1,10 +1,9 @@
 package com.seasungames.api;
 
 import com.seasungames.constant.Platform;
-import com.seasungames.db.AppStore;
 import com.seasungames.db.AppVersionStore;
 import com.seasungames.db.pojo.AppVersionItem;
-import com.seasungames.model.AddAppVersionRequest;
+import com.seasungames.model.AddAppVersionUrlRequest;
 import com.seasungames.model.ErrorCode;
 import com.seasungames.model.ResponseData;
 import com.seasungames.model.ResponseDataUtil;
@@ -22,32 +21,26 @@ import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import javax.validation.Validator;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
+import java.util.HashMap;
+import java.util.Objects;
 
 /**
  * Created by jianghaitao on 2020/4/27.
  */
-public class AddAppVersionResource {
+public class AddAppVersionUrlResource {
 
-    private static final Logger log = LoggerFactory.getLogger(AddAppVersionResource.class);
+    private static final Logger log = LoggerFactory.getLogger(AddAppVersionUrlResource.class);
 
     @Inject
     Validator validator;
 
     @Inject
-    AppStore appStore;
-
-    @Inject
     AppVersionStore appVersionStore;
 
-    private final SimpleDateFormat isoFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
-
-    @Route(methods = HttpMethod.POST, path = "v2/app-version/add", type = HandlerType.NORMAL)
+    @Route(methods = HttpMethod.POST, path = "v2/app-version/url/add", type = HandlerType.NORMAL)
     void add(RoutingContext rc) {
         ResponseData<Void> responseData = ResponseDataUtil.buildSuccess();
-        var request = HttpUtils.parseRequest(rc, AddAppVersionRequest.class);
+        var request = HttpUtils.parseRequest(rc, AddAppVersionUrlRequest.class);
         HttpUtils.validate(validator, request, responseData);
         if (responseData.error()) {
             rc.response().end(Json.encode(responseData));
@@ -64,13 +57,20 @@ public class AddAppVersionResource {
 
     }
 
-    private void save(AddAppVersionRequest request, Handler<AsyncResult<ErrorCode>> resultHandler) {
-        appStore.exist(request.getApp(), ar -> {
+    private void save(AddAppVersionUrlRequest request, Handler<AsyncResult<ErrorCode>> resultHandler) {
+        AppVersionItem item = toItem(request);
+        appVersionStore.get(item.id(), item.version(), ar -> {
             if (ar.succeeded()) {
-                if (ar.result()) {
-                    saveAddAppVersion(toItem(request), resultHandler);
+                if (ar.result().isPresent()) {
+                    var moreUrls = ar.result().get().moreUrls();
+                    if (Objects.isNull(moreUrls)) {
+                        moreUrls = new HashMap<>();
+                    }
+                    moreUrls.put(request.getName(), request.getUrl());
+                    item.moreUrls(moreUrls);
+                    addAppVersionUrl(item, resultHandler);
                 } else {
-                    resultHandler.handle(Future.succeededFuture(ErrorCode.APP_NOT_EXIST));
+                    resultHandler.handle(Future.succeededFuture(ErrorCode.APP_VERSION_NOT_EXIST));
 
                 }
             } else {
@@ -79,42 +79,26 @@ public class AddAppVersionResource {
         });
     }
 
-    private void saveAddAppVersion(AppVersionItem item, Handler<AsyncResult<ErrorCode>> resultHandler) {
-        appVersionStore.save(item, ar -> {
+    private void addAppVersionUrl(AppVersionItem item, Handler<AsyncResult<ErrorCode>> resultHandler) {
+        appVersionStore.addUrl(item, ar -> {
             if (ar.failed()) {
                 resultHandler.handle(Future.failedFuture(ar.cause()));
             } else {
-                if (ar.result()) {
-                    resultHandler.handle(Future.succeededFuture(ErrorCode.SUCCESS));
-                } else {
-                    resultHandler.handle(Future.succeededFuture(ErrorCode.APP_VERSION_EXIST));
-                }
+                resultHandler.handle(Future.succeededFuture(ErrorCode.SUCCESS));
             }
         });
     }
 
-    private AppVersionItem toItem(AddAppVersionRequest request) {
+    private AppVersionItem toItem(AddAppVersionUrlRequest request) {
         String url = request.getUrl();
         Platform platform = getInstallPack(url);
         return AppVersionItem.builder()
                 .id(AppVersionItem.generateId(platform, request.getApp()))
                 .version(request.getVersion())
-                .desc(request.getDescription())
-                .time(iosDateToSecond(request.getTime()))
-                .url(request.getUrl())
-                .ttl(Instant.now().getEpochSecond())
                 .build();
     }
 
     private static Platform getInstallPack(String url) {
         return url.endsWith("apk") ? Platform.ANDROID : Platform.IOS;
-    }
-
-    private long iosDateToSecond(String isoDate) {
-        try {
-            return isoFormat.parse(isoDate).toInstant().getEpochSecond();
-        } catch (ParseException e) {
-            return Instant.now().getEpochSecond();
-        }
     }
 }

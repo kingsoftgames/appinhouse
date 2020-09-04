@@ -13,11 +13,13 @@ import java.util.Optional;
 public interface AppVersionStore {
     void createTable(Handler<AsyncResult<Void>> resultHandler);
 
-    void save(AppVersionItem appVersionItem, Handler<AsyncResult<Void>> resultHandler);
+    void save(AppVersionItem appVersionItem, Handler<AsyncResult<Boolean>> resultHandler);
 
     void get(String id, String version, Handler<AsyncResult<Optional<AppVersionItem>>> resultHandler);
 
     void getByLimit(String id, long ctime, int limit, Handler<AsyncResult<AppVersionItems>> resultHandler);
 
     void getLast(String id, Handler<AsyncResult<Optional<AppVersionItem>>> resultHandler);
+
+    void addUrl(AppVersionItem appVersionItem, Handler<AsyncResult<Void>> resultHandler);
 }

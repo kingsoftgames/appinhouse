@@ -16,7 +16,9 @@ public enum ErrorCode {
 
     // 100~199为应用相关的错误
     APP_EXIST(100, "app exist!"),
-    APP_NOT_EXIST(101, "app not exist!");
+    APP_NOT_EXIST(101, "app not exist!"),
+    APP_VERSION_NOT_EXIST(102, "app version not exist!"),
+    APP_VERSION_EXIST(103, "app version exist!");
 
     private int code;
     private String msg;

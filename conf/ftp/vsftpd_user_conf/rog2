@@ -1,6 +1,0 @@
-write_enable=YES
-anon_world_readable_only=NO
-anon_upload_enable=YES
-anon_mkdir_write_enable=YES
-anon_other_write_enable=YES
-local_root=/var/www/appinhouse.rog2.org/rog2

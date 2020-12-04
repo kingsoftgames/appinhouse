@@ -5,7 +5,7 @@ import (
 	. "appinhouse/constants"
 	"bytes"
 
-	"github.com/DHowett/go-plist"
+	"howett.net/plist"
 
 	"gopkg.in/redis.v3"
 )

@@ -1,0 +1,85 @@
+#!/usr/bin/env groovy
+
+def getHost() {
+    def remote = [:]
+    remote.name = 'appinhouse'
+    remote.host = 'test.server'
+    remote.allowAnyHosts = true
+    remote.user = 'ubuntu'
+    return remote
+}
+
+remote = getHost()
+
+def initDir() {
+    sshPut remote: remote, from: env.WORKSPACE + '/deploy/init.sh', into: '/tmp'
+    sshCommand remote: remote, command: "bash /tmp/init.sh"
+}
+
+def copyConf() {
+    sshPut remote: remote, from: env.WORKSPACE + '/docker-compose.yml', into: env.APPINHOUSE_HOME
+    sshPut remote: remote, from: env.WORKSPACE + '/deploy/redis.conf', into: env.REDIS_CONFIG_PATH
+}
+
+def setConf(String secretKey) {
+    sshPut remote: remote, from: env.WORKSPACE + '/deploy/set-appinhouse-conf.sh', '/tmp'
+    sshCommand remote: remote, command: "bash /tmp/set-appinhouse-conf.sh " + secretKey
+}
+
+def run(String appinhouseImageTag) {
+    sshPut remote: remote, from: env.WORKSPACE + '/deploy/start.sh', into: '/tmp'
+    sshCommand remote: remote, command: "bash /tmp/start.sh " + appinhouseImageTag
+}
+
+def deployBySSH(String secretKey, String appinhouseImageTag) {
+    initDir()
+    copyConf()
+    setConf(String secretKey)
+    run(String appinhouseImageTag)
+}
+
+pipeline {
+    agent any
+    options {
+        skipDefaultCheckout()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(
+            daysToKeepStr: '15',
+            artifactNumToKeepStr: '20'
+        ))
+        ansiColor('xterm')
+    }
+    environment {
+        APPINHOUSE_HOME = '/srv/appinhouse'
+        DOCKER_COMPOSE_FILE = "${env.APPINHOUSE_HOME}/docker-compose.yml"
+        APPINHOUSE_CONFIG_PATH = "${env.APPINHOUSE_HOME}/conf"
+        REDIS_CONFIG_PATH = "/srv/redis/conf"
+    }
+    parameters {
+        string(name: 'APPINHOUSE_IMAGE_TAG',
+            defaultValue: false,
+            description: 'appinhouse image tag')
+    }
+    stages {
+        stage('Set Private Key') {
+            steps {
+                script {
+                    //    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins.ssh', keyFileVariable: 'identity')]) {
+                    //        remote.identityFile = identity
+                    withCredentials([usernamePassword(credentialsId: 'jenkins.ssh', usernameVariable: 'username', passwordVariable: 'password')]) {
+                        remote.password = password
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                    withCredentials([string(credentialsId: appinhouseConf.credential, variable: 'secretKey')]) {
+                        deployAppinhouseServer(secretKey, params.APPINHOUSE_IMAGE_TAG)
+                    }                    
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,16 @@
+version: '3'
+services:
+  appinhouse:
+    image: ${APPINHOUSE_IMAGE_TAG}
+    ports:
+      - "8181:8181"
+    volumes:
+      -  /srv/appinhouse/conf:/go/bin/conf
+    depends_on:
+      - redis
+  redis:
+    image: redis:6.0.9
+    volumes:
+      - /srv/redis/conf/redis.conf:/srv/redis/conf/redis.conf
+      - /srv/redis/data:/data
+    command: ["redis-server", "/srv/redis/conf/redis.conf"]

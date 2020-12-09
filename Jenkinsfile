@@ -1,9 +1,7 @@
 #!/usr/bin/env groovy
 
 pipeline {
-    agent {
-        label 'os:linux'
-    }
+    agent any
     options {
         skipDefaultCheckout()
         disableConcurrentBuilds()

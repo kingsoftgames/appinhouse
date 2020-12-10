@@ -34,8 +34,8 @@ def run(String appinhouseImageTag) {
 def deployBySSH(String secretKey, String appinhouseImageTag) {
     initDir()
     copyConf()
-    setConf(String secretKey)
-    run(String appinhouseImageTag)
+    setConf(secretKey)
+    run(appinhouseImageTag)
 }
 
 pipeline {
@@ -57,7 +57,7 @@ pipeline {
     }
     parameters {
         string(name: 'APPINHOUSE_IMAGE_TAG',
-            defaultValue: false,
+            defaultValue: 'docker.shiyou.kingsoft.com/infra/appinhouse:latest',
             description: 'appinhouse image tag')
     }
     stages {

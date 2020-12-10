@@ -76,7 +76,7 @@ pipeline {
             steps {
                 script {
                     withCredentials([string(credentialsId: 'appinhouse-secret-key', variable: 'secretKey')]) {
-                        deployAppinhouseServer(secretKey, params.APPINHOUSE_IMAGE_TAG)
+                        deployBySSH(secretKey, params.APPINHOUSE_IMAGE_TAG)
                     }                    
                 }
             }

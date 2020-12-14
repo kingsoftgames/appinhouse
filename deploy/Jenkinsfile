@@ -76,22 +76,16 @@ pipeline {
                 }
             }
         }
-        stage('Set Private Key') {
+        stage('Deploy') {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins.ssh', keyFileVariable: 'identity')]) {
                         remote.identityFile = identity
+                        def appinhouseConf = loadAppinhouseConf()
+                        withCredentials([string(credentialsId: appinhouseConf.credential, variable: 'secretKey')]) {
+                            deployBySSH(secretKey, params.APPINHOUSE_IMAGE_TAG)
+                        }           
                     }
-                }
-            }
-        }
-        stage('Deploy') {
-            steps {
-                script {
-                    def appinhouseConf = loadAppinhouseConf()
-                    withCredentials([string(credentialsId: appinhouseConf.credential, variable: 'secretKey')]) {
-                        deployBySSH(secretKey, params.APPINHOUSE_IMAGE_TAG)
-                    }                    
                 }
             }
         }

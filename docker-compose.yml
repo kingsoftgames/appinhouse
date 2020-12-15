@@ -1,7 +1,8 @@
 version: '3'
 services:
   appinhouse:
-    image: ${APPINHOUSE_IMAGE_TAG}
+    image: docker.shiyou.kingsoft.com/infra/appinhouse:latest
+    user: "1000:1000"
     ports:
       - "8181:8181"
     volumes:
@@ -10,7 +11,8 @@ services:
       - redis
   redis:
     image: docker.shiyou.kingsoft.com/mirror/redis:6.0.9
+    user: "999:999"
     volumes:
-      - /srv/redis/conf/redis.conf:/srv/appinhouse/redis/conf/redis.conf
+      - /srv/appinhouse/redis/conf/redis.conf:/local/conf/redis.conf
       - /srv/appinhouse/redis/data:/data
-    command: ["redis-server", "/srv/appinhouse/redis/conf/redis.conf"]
+    command: ["redis-server", "/local/conf/redis.conf"]

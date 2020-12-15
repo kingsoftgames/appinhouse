@@ -1,10 +1,4 @@
 #!/usr/bin/env groovy
-
-def loadAppinhouseConf() {
-    def resource = libraryResource 'appinhouse.yml'
-    return readYaml(text: resource)
-}
-
 def getHost() {
     def remote = [:]
     remote.name = 'appinhouse'
@@ -16,35 +10,13 @@ def getHost() {
 
 remote = getHost()
 
-def initDir() {
-    sshCommand remote: remote, command: "mkdir -p /tmp/appinhouse"
-    sshPut remote: remote, from: env.WORKSPACE + '/deploy/init.sh', into: '/tmp/appinhouse'
-    sshCommand remote: remote, command: "bash /tmp/appinhouse/init.sh"
-}
-
-def copyConf() {
-    sshPut remote: remote, from: env.WORKSPACE + '/docker-compose.yml', into: '/tmp/appinhouse'
-    sshPut remote: remote, from: env.WORKSPACE + '/deploy/redis.conf', into: '/tmp/appinhouse'
-    sshPut remote: remote, from: env.WORKSPACE + '/conf/app.conf', into:'/tmp/appinhouse'
-    sshPut remote: remote, from: env.WORKSPACE + '/deploy/copy-conf.sh', into: '/tmp/appinhouse'
-    sshCommand remote: remote, command: "bash /tmp/appinhouse/copy-conf.sh"
-}
-
-def setConf(String secretKey) {
-    sshPut remote: remote, from: env.WORKSPACE + '/deploy/set-appinhouse-conf.sh', into:'/tmp/appinhouse'
-    sshCommand remote: remote, command: "bash /tmp/appinhouse/set-appinhouse-conf.sh " + secretKey
-}
-
-def run(String appinhouseImageTag) {
-    sshPut remote: remote, from: env.WORKSPACE + '/deploy/start.sh', into: '/tmp/appinhouse'
-    sshCommand remote: remote, command: "bash /tmp/appinhouse/start.sh " + appinhouseImageTag
-}
-
-def deployBySSH(String secretKey, String appinhouseImageTag) {
-    initDir()
-    copyConf()
-    setConf(secretKey)
-    run(appinhouseImageTag)
+def deployBySSH() {
+    def run_command = """cd /srv/appinhouse \
+    && docker-compose down \
+    && docker-compose pull \
+    && docker-compose up -d
+    """
+    sshCommand remote: remote, command: run_command
 }
 
 pipeline {
@@ -58,33 +30,13 @@ pipeline {
         ))
         ansiColor('xterm')
     }
-    environment {
-        APPINHOUSE_HOME = '/srv/appinhouse'
-        DOCKER_COMPOSE_FILE = "${env.APPINHOUSE_HOME}/docker-compose.yml"
-        APPINHOUSE_CONFIG_PATH = "${env.APPINHOUSE_HOME}/conf"
-    }
-    parameters {
-        string(name: 'APPINHOUSE_IMAGE_TAG',
-            defaultValue: 'docker.shiyou.kingsoft.com/infra/appinhouse:latest',
-            description: 'appinhouse image tag')
-    }
     stages {
-        stage('Checkout') {
-            steps {
-                script {
-                    checkout scm
-                }
-            }
-        }
         stage('Deploy') {
             steps {
                 script {
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins.ssh', keyFileVariable: 'identity')]) {
                         remote.identityFile = identity
-                        def appinhouseConf = loadAppinhouseConf()
-                        withCredentials([string(credentialsId: appinhouseConf.credential, variable: 'secretKey')]) {
-                            deployBySSH(secretKey, params.APPINHOUSE_IMAGE_TAG)
-                        }           
+                        deployBySSH()          
                     }
                 }
             }

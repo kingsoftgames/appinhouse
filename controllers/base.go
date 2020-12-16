@@ -68,12 +68,12 @@ func (c *BaseController) converInfoTOItem(info *models.DescInfo, platform Platfo
 		item.Platform = Ios_Str
 		if info.Channel == Ios_Channel {
 			if info.SoftwareUrl != "" {
-				item.Down = Https + Domain + info.SoftwareUrl
+				item.Down = c.Ctx.Input.Site() + info.SoftwareUrl
 			}
 			if info.ExtendSoftwareUrls != nil && len(info.ExtendSoftwareUrls) > 0 {
 				for k, v := range info.ExtendSoftwareUrls {
 					ename := c.getNameForExtendSoftwareUrl(k)
-					item.ExtendUrls[ename] = Https + Domain + v
+					item.ExtendUrls[ename] = c.Ctx.Input.Site() + v
 				}
 			}
 		} else {

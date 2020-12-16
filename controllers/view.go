@@ -1,11 +1,10 @@
 package controllers
 
 import (
-	"github.com/astaxie/beego/core/logs"
 	"strings"
 )
 
-var mobiles = [...]string{"ipad", "iphone", "ipod", "ipod"}
+var mobiles = [...]string{"ipad", "iphone", "ipod", "ipod", "android"}
 
 type ViewController struct {
 	BaseController
@@ -49,7 +48,6 @@ func (c *ViewController) Info() {
 
 func (c *ViewController) App() {
 	id := c.GetString("id")
-	logs.Info(id)
 	c.Data["app"] = id
 	if c.isMobile() {
 		c.TplName = "index_mobile.html"

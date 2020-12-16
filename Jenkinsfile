@@ -39,7 +39,7 @@ pipeline {
                 }
             }
             steps {
-                autoDeploy targetJob: 'deploy-appinhouse'
+                autoDeploy targetJob: 'Infra/Ops/Deploy/appinhouse'
             }
         }
     }

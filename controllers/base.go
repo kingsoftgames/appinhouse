@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/astaxie/beego/core/logs"
 	"github.com/astaxie/beego/server/web"
 )
 
@@ -47,6 +48,7 @@ func (c *BaseController) converAppTOItem(info *models.AppInfo) *AppDto {
 }
 
 func (c *BaseController) converInfoTOItem(info *models.DescInfo, platform Platform, environment Environment, app string, toffset int) *ItemDto {
+	logs.Info("Appinhouse Host => " + c.Ctx.Input.Context.Request.Host)
 	if info == nil {
 		return nil
 	}
